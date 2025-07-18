@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SQL Query Generator</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f4f7f8;
+      padding: 20px;
+    }
+    .container {
+      max-width: 800px;
+      background: white;
+      margin: 0 auto;
+      padding: 30px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+      border-radius: 10px;
+    }
+    h1 {
+      text-align: center;
+      color: #333;
+    }
+    label {
+      display: block;
+      margin-top: 15px;
+      font-weight: bold;
+    }
+    input, select, button {
+      width: 100%;
+      padding: 10px;
+      margin-top: 5px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    .column-set {
+      margin-top: 20px;
+      border: 1px solid #ddd;
+      padding: 15px;
+      border-radius: 5px;
+      background-color: #fafafa;
+    }
+    .output {
+      margin-top: 20px;
+      background: #272822;
+      color: #fff;
+      padding: 15px;
+      font-family: monospace;
+      white-space: pre-wrap;
+      border-radius: 5px;
+    }
+    .btn {
+      background-color: #007bff;
+      color: white;
+      border: none;
+      margin-top: 20px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    .btn:hover {
+      background-color: #0056b3;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>SQL Query Generator</h1>
+    <form id="sqlForm">
+      <label for="tableName">Table Name:</label>
+      <input type="text" id="tableName" required placeholder="e.g. users" />
+
+      <label for="numColumns">Number of Columns:</label>
+      <input type="number" id="numColumns" min="1" max="20" required />
+
+      <button type="button" class="btn" onclick="generateInputs()">Set Columns</button>
+
+      <div id="columnsContainer"></div>
+
+      <label for="sqlOperation">SQL Operation:</label>
+      <select id="sqlOperation" onchange="toggleInputs()">
+        <option value="CREATE">CREATE TABLE</option>
+        <option value="SELECT">SELECT</option>
+        <option value="INSERT">INSERT</option>
+        <option value="UPDATE">UPDATE</option>
+        <option value="DELETE">DELETE</option>
+        <option value="DROP">DROP TABLE</option>
+        <option value="ALTER">ALTER TABLE</option>
+        <option value="GRANT">GRANT</option>
+        <option value="REVOKE">REVOKE</option>
+      </select>
+
+      <button type="submit" class="btn">Generate SQL</button>
+    </form>
+
+    <div id="output" class="output" style="display:none;"></div>
+    <button id="copyButton" class="btn" style="display:none;" onclick="copyToClipboard()">Copy SQL</button>
+  </div>
+
+  <script>
+    function generateInputs() {
+      const container = document.getElementById('columnsContainer');
+      const num = parseInt(document.getElementById('numColumns').value, 10);
+      container.innerHTML = '';
+
+      if (isNaN(num) || num < 1) {
+        alert("Please enter a valid number of columns.");
+        return;
+      }
+
+      for (let i = 0; i < num; i++) {
+        container.innerHTML += `
+          <div class="column-set">
+            <label>Column ${i + 1} Name:</label>
+            <input type="text" name="colName" required />
+
+            <label>Data Type:</label>
+            <select name="colType">
+              <option value="INT">INT</option>
+              <option value="VARCHAR(255)">VARCHAR(255)</option>
+              <option value="TEXT">TEXT</option>
+              <option value="DATE">DATE</option>
+              <option value="BOOLEAN">BOOLEAN</option>
+            </select>
+
+            <label>Constraints (optional):</label>
+            <input type="text" name="colConstraint" placeholder="e.g. PRIMARY KEY, NOT NULL" />
+          </div>
+        `;
+      }
+    }
+
+    function toggleInputs() {
+      const operation = document.getElementById('sqlOperation').value;
+      const columnsContainer = document.getElementById('columnsContainer');
+      const tableNameInput = document.getElementById('tableName');
+      const numColumnsInput = document.getElementById('numColumns');
+
+      columnsContainer.innerHTML = '';
+      tableNameInput.style.display = 'block';
+      numColumnsInput.style.display = (operation === 'CREATE') ? 'block' : 'none';
+
+      if (operation === 'SELECT') {
+        columnsContainer.innerHTML = `
+          <label>Columns to Select (comma-separated):</label>
+          <input type="text" id="selectColumns" placeholder="e.g. id, name" />
+          <label>Conditions (optional):</label>
+          <input type="text" id="selectConditions" placeholder="e.g. age > 30" />
+        `;
+      } else if (operation === 'INSERT') {
+        columnsContainer.innerHTML = `
+          <label>Columns (comma-separated):</label>
+          <input type="text" id="insertColumns" placeholder="e.g. id, name" />
+          <label>Values (comma-separated):</label>
+          <input type="text" id="insertValues" placeholder="e.g. 1, 'John'" />
+        `;
+      } else if (operation === 'UPDATE') {
+        columnsContainer.innerHTML = `
+          <label>Set Clause (e.g. name = 'John'):</label>
+          <input type="text" id="updateSet" placeholder="e.g. name = 'John'" />
+          <label>Conditions (optional):</label>
+          <input type="text" id="updateConditions" placeholder="e.g. id = 1" />
+        `;
+      } else if (operation === 'DELETE') {
+        columnsContainer.innerHTML = `
+          <label>Conditions (optional):</label>
+          <input type="text" id="deleteConditions" placeholder="e.g. age < 18" />
+        `;
+      } else if (operation === 'DROP') {
+        columnsContainer.innerHTML = `<p>This will generate: DROP TABLE ${document.getElementById('tableName').value || 'your_table'}</p>`;
+      } else if (operation === 'ALTER') {
+        columnsContainer.innerHTML = `
+          <label>Alteration Type:</label>
+          <select id="alterType">
+            <option value="ADD COLUMN">ADD COLUMN</option>
+            <option value="DROP COLUMN">DROP COLUMN</option>
+            <option value="MODIFY COLUMN">MODIFY COLUMN</option>
+          </select>
+          <label>Column Name:</label>
+          <input type="text" id="alterColumnName" placeholder="e.g. age" />
+          <label>Data Type (if applicable):</label>
+          <input type="text" id="alterDataType" placeholder="e.g. INT" />
+        `;
+      } else if (operation === 'GRANT' || operation === 'REVOKE') {
+        columnsContainer.innerHTML = `
+          <label>Permission:</label>
+          <input type="text" id="permission" placeholder="e.g. SELECT, INSERT" />
+          <label>Role/User:</label>
+          <input type="text" id="roleUser" placeholder="e.g. admin, user123" />
+        `;
+      }
+    }
+
+    function copyToClipboard() {
+      const output = document.getElementById('output');
+      if (output.style.display !== 'none') {
+        navigator.clipboard.writeText(output.textContent)
+          .then(() => alert("SQL statement copied to clipboard!"))
+          .catch(err => console.error("Failed to copy text: ", err));
+      }
+    }
+
+    document.getElementById('sqlForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const operation = document.getElementById('sqlOperation').value;
+      const tableName = document.getElementById('tableName').value.trim();
+      let sql = '';
+
+      if (!tableName.match(/^[a-zA-Z_][a-zA-Z0-9_]*$/)) {
+        alert("Invalid table name.");
+        return;
+      }
+
+      if (operation === 'CREATE') {
+        const colNames = Array.from(document.getElementsByName('colName')).map(i => i.value.trim());
+        const colTypes = Array.from(document.getElementsByName('colType')).map(i => i.value);
+        const colConstraints = Array.from(document.getElementsByName('colConstraint')).map(i => i.value.trim());
+        sql = `CREATE TABLE ${tableName} (\n`;
+
+        for (let i = 0; i < colNames.length; i++) {
+          sql += `  ${colNames[i]} ${colTypes[i]}`;
+          if (colConstraints[i]) sql += ` ${colConstraints[i]}`;
+          sql += (i !== colNames.length - 1) ? ',\n' : '\n';
+        }
+        sql += ');';
+      } else if (operation === 'SELECT') {
+        const selectCols = document.getElementById('selectColumns').value.trim() || '*';
+        const conditions = document.getElementById('selectConditions').value.trim();
+        sql = `SELECT ${selectCols} FROM ${tableName}`;
+        if (conditions) sql += ` WHERE ${conditions}`;
+        sql += ';';
+      } else if (operation === 'INSERT') {
+        const cols = document.getElementById('insertColumns').value.trim();
+        const vals = document.getElementById('insertValues').value.trim();
+        if (!cols || !vals) {
+          alert("Please provide both columns and values.");
+          return;
+        }
+        sql = `INSERT INTO ${tableName} (${cols}) VALUES (${vals});`;
+      } else if (operation === 'UPDATE') {
+        const set = document.getElementById('updateSet').value.trim();
+        const where = document.getElementById('updateConditions').value.trim();
+        if (!set) {
+          alert("Please provide SET clause.");
+          return;
+        }
+        sql = `UPDATE ${tableName} SET ${set}`;
+        if (where) sql += ` WHERE ${where}`;
+        sql += ';';
+      } else if (operation === 'DELETE') {
+        const where = document.getElementById('deleteConditions').value.trim();
+        sql = `DELETE FROM ${tableName}`;
+        if (where) sql += ` WHERE ${where}`;
+        sql += ';';
+      } else if (operation === 'DROP') {
+        sql = `DROP TABLE ${tableName};`;
+      } else if (operation === 'ALTER') {
+        const type = document.getElementById('alterType').value;
+        const col = document.getElementById('alterColumnName').value.trim();
+        const dataType = document.getElementById('alterDataType').value.trim();
+        sql = `ALTER TABLE ${tableName} ${type} ${col}`;
+        if (dataType) sql += ` ${dataType}`;
+        sql += ';';
+      } else if (operation === 'GRANT' || operation === 'REVOKE') {
+        const permission = document.getElementById('permission').value.trim();
+        const roleUser = document.getElementById('roleUser').value.trim();
+        sql = `${operation} ${permission} ON ${tableName} TO ${roleUser};`;
+      }
+
+      const output = document.getElementById('output');
+      output.style.display = 'block';
+      document.getElementById('copyButton').style.display = 'inline-block';
+      output.textContent = sql;
+    });
+  </script>
+</body>
+</html>
